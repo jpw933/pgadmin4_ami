@@ -1,5 +1,9 @@
 version: 0.2
 
+env:
+  variables:
+    USER: "root"
+
 phases:
   pre_build:
     commands:
