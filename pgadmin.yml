@@ -1,0 +1,66 @@
+---
+- name: centos7.0 with pgadmin4.0
+  hosts: default
+  become: true
+  become_user: root
+
+  pre_tasks:
+   - name: update all packages
+     yum:
+        name: "*"
+        state: latest
+  tasks:
+   - name: install pgdg-redhat96-9.6-3.noarch.rpm
+     yum:
+        name: https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm
+        state: present
+
+   - name: install epel-release
+     yum:
+        name: epel-release
+        state: present
+
+   - name: install pgadmin4
+     yum:
+        name: pgadmin4-v2
+        state: present
+
+   - name: check if installed previously
+     stat:
+        path: /usr/lib/python2.7/site-packages/pgadmin4-web
+     register: pgadmin_installed
+
+   - name: pgadmin config file
+     copy:
+        src: config_distro.py
+        dest: /usr/lib/python2.7/site-packages/pgadmin4-web/config_distro.py
+     when: pgadmin_installed.stat.exists
+
+   - name: setup and config pgadmin
+     shell: |
+       export PGADMIN_SETUP_PASSWORD="Poiu0987"
+       export PGADMIN_SETUP_EMAIL="jwei@truecar.com"
+       python /usr/lib/python2.7/site-packages/pgadmin4-web/setup.py
+
+   - name: change /var/lib/pgadmin4, /var/log/pgadmin4
+     file:
+        path: "{{ item }}"
+        state: directory
+        recurse: yes
+        owner: apache
+        group: apache
+        mode: 0755
+     with_items:
+       - /var/lib/pgadmin4
+       - /var/log/pgadmin4
+
+   - name: run chcon
+     shell: |
+       chcon -R -t httpd_sys_content_rw_t /var/lib/pgadmin4
+       chcon -R -t httpd_sys_content_rw_t /var/log/pgadmin4
+
+   - name: pgadmin config file
+     copy:
+        src: pgadmin4.conf
+        dest: /etc/httpd/conf.d/pgadmin4.conf
+
